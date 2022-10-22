@@ -1,0 +1,193 @@
+一、用户登录
+	前端实现
+为ajax请求   所以不用做回显
+成功设置cookie，跳转到main页面
+	if (result.code==200){
+                    layer.msg("登录成功",function (){
+                        $.cookie("userId",result.result.id);
+                        $.cookie("userName",result.result.userName);
+                        $.cookie("trueName",result.result.trueName);
+                        window.location.href=ctx+"/main"
+                    })
+                }else {
+                    layer.msg(result.msg,{icon:5})
+                }
+
+
+	后端实现
+        整体思路:
+        1.参数判断
+           用户姓名非空判断用户密码非空判断
+        2.通过用户名查询用户记录，返回用户对象
+        3.判断用户对象是否为空
+        4.如果用户对象不为空，则将前台传递的用户密码与数据库中的密码作比较
+        5.判断密码是否正确
+        6.如果密码正确，则登录成功,返回结果
+
+
+        Controller层(控制层:接收请求、响应结果)
+            1.通过形参接收客户端传递的参数
+            2.调用业务逻辑层的登录方法,得到登录结果
+	  3.响应数据给客户端
+
+
+        Service层(业务逻辑层:非空判断、条件判断等业务逻辑处理)
+            1.参数判断,判断用户姓名、用户密码非空弄
+               如果参数为空,抛出异常(异常被控制层捕获并处理)
+            2.调用数据访问层，通过用户名查询用户记录，返回用户对象
+            3.判断用户对象是否为空
+               如果对象为空,抛出异常(异常被控制层捕获并处理)
+            4.判断密码是否正确，比较客户端传递的用户密码与数据库中查询的用户对象中的用户密码
+               如果密码不相等，抛出异常(异常被控制层捕获并处理)
+            5.如果密码正确,登录成功
+
+        Dao层（数据访问层:数据库中增删改查操作)
+            通过用户名查询用户记录，返回用户对象
+
+
+一，二、用户登录细节
+	1.登录将userId加密处理
+	2.登录成功跳转主页后将user对象存到sesser作用域中
+
+ @RequestMapping("main")
+    public String main(HttpServletRequest request){
+	//封装的方法可以自动取userid  内部自动解码
+        int userid = LoginUserUtil.releaseUserIdFromCookie(request);
+        User user = (User) userService.selectByPrimaryKey(userid);
+        request.getSession().setAttribute("user",user);
+        return "main";
+    }
+
+
+二、修改密码
+   前端   监听确认保存按钮
+   发送ajax请求 //data.field表示提交后端的信息
+   成功清空cookie跳转登录页面（父窗口跳转）
+$.removeCookie("userIdStr",{domain:"localhost",path:"/crm"});
+ window.parent.location.href=ctx+"/index"
+
+
+    后端实现
+        controller层
+            1.通过形参接收前端传递的参数(原始密码、新密码、确认密码)
+            2.通过request对象，获取设置在cookie中的用户ID
+            3.调用Service层修改密码的功能，得到ResultInfo对象
+            4.返回ResultInfo对象
+
+        service层 （添加事物）@Transactional(propagation = Propagation.REQUIRED)
+            1.接收四个参数(用户ID、原始密码、新密码、确认密码)
+            2.通过用户ID查询用户记录，返回用户对象
+            3.参数校验(md5加密)
+        //待更新用户记录是否存在(用户对象是否为空)
+        AssertUtil.isTrue(null==user,"待更新用户记录不存在");
+        //判断原始密码是否为空
+        AssertUtil.isTrue(StringUtils.isBlank(oldpwd),"原始密码为空");
+        //判断原始密码是否正确（查询的用户对象中的用户密码是否原始密码一致)(md5加密)
+        AssertUtil.isTrue(!user.getUserPwd().equals(Md5Util.encode(oldpwd)),"原始密码不正确");
+        //判断新密码是否为空
+        AssertUtil.isTrue(null==newpwd||"".equals(newpwd),"新密码为空");
+        //判断新密码是否与原始密码一致(不允许新密码与原始密码)
+        AssertUtil.isTrue(newpwd.equals(oldpwd),"新密码与原始密码一致");
+        //判断确认密码是否为空
+        AssertUtil.isTrue(null==repeatpwd||"".equals(repeatpwd),"确认密码为空");
+        //判断确认密码是饿与新密码一致
+        AssertUtil.isTrue(!repeatpwd.equals(newpwd),"确认密码与新密码不一致");
+            4.设置用户的新密码
+                需要将新密码通过指定算法进行加密(md5加密)
+            5.执行更新操作，判断受影响的行数
+
+
+        Dao层
+            通过用户ID修改用户密码
+
+
+二,一，用户退出
+
+1,主页面引入js资源
+	<script type="text/javascript" src="${ctx}/js/main.js"></script>
+2,绑定退出按钮操作(弹提示框)(退出清空cookie)(父页面跳转)
+layui.use(['element', 'layer', 'layuimini','jquery','jquery_cookie'], function () {
+    var $ = layui.jquery,
+        layer = layui.layer,
+        $ = layui.jquery_cookie($);
+
+    // 菜单初始化
+    $('#layuiminiHomeTabIframe').html('<iframe width="100%" height="100%" frameborder="0"  src="welcome"></iframe>')
+    layuimini.initTab();
+
+    //用户退出
+    $(".login-out").click(function () {
+
+        layer.confirm('确认退出系统吗?',{icon: 3, title:'系统提示'}, function(index){
+            //do something
+            layer.close(index);
+            $.removeCookie("userIdStr",{domain:"localhost",path:"/crm"});
+            $.removeCookie("userName",{domain:"localhost",path:"/crm"});
+            $.removeCookie("trueName",{domain:"localhost",path:"/crm"});
+            window.parent.location.href=ctx+"/index";
+        });
+
+    })
+
+});
+
+
+二,二全局异常统一处理
+//如果异常是方法
+handler instanceof HandlerMethod
+//获取方法的注解
+ResponseBody responseBody= hm.getMethod().getDeclaredAnnotation(ResponseBody.class);
+//返回json
+	//判读参数为自定义参数异常
+	ex instanceof ParamsException
+	//传参信息
+	mv.addObject("msg",pe.getMsg());
+          mv.addObject("code",pe.getCode());
+//返回为视图
+	ResultInfo resultInfo=new ResultInfo();
+	设置默认
+	resultInfo.setCode(300);
+	resultInfo.setMsg("系统错误,请稍后再试...");
+	//设置编码
+ 	//建流
+	//传参信息
+
+
+
+二.三 非法拦截
+    拦截用户是否是登录状态
+        在目标方法〔目标资源)执行前,执行的方法
+    方法返回布尔类型:
+        如果返回true。表示目标方法可以被执行
+        如果返回false,表示阻止目标方法执行
+    如果判断用户是否是登录状态:
+        1.判断cookie中是舌存在用户信息〔获取用户ID)
+        2.数据库中是否存在指定用户ID的值
+        	如果用户是登录状态，则允许目标方法执行;
+        	如果用户是非登录状态，则抛出未登录异常;
+
+public class NoLoginInterceptor extends HandlerInterceptorAdapter {
+   @Resource
+	private UserService userService;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        int userId = LoginUserUtil.releaseUserIdFromCookie(request);
+        if (userId==0||userService.selectByPrimaryKey(userId)==null){
+            //抛异常  存在默认值
+            throw new NoLoginException();
+        }
+        return super.preHandle(request, response, handler);
+    }
+}
+3,(在全局异常中做判断。如果是未登录异常，则跳转到登录页面)
+4.拦截器生效
+
+二.四 记住我的
+在ajax登录成功后 进行记住我的判读，选中设置cookie时间
+        $.cookie("userIdStr",result.result.userIdStr,{expires:7});
+        $.cookie("userName",result.result.userName,{expires:7});
+        $.cookie("trueName",result.result.trueName,{expires:7});
+
+
+

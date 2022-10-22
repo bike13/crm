@@ -1,0 +1,109 @@
+客户开发计划（打开）mian--->cus_dev_plan
+    前台--数据报表自动加载
+        绑定资源<script type="text/javascript" src="${ctx}/js/cusDevPlan/cus.dev.plan.js"></script>
+        点击跳转后台
+        后台跳转对应前台ftl   js资源中数据表格请求后台（flag=1）
+
+        模糊搜索
+        按钮点击事件绑定（数据表格重载请求后台）
+
+
+    后台
+        后台查询参数
+         客户名 customerName;
+         创建人createMan;
+         分配状态 state;
+        开发状态devResult;
+        分配人员assignMan;
+
+        （flag=1）查询（已分配的state    指派当前用户id的assignMan   数据）
+        --接收一个SaleChanceQuery类（三个模糊搜索）
+            多条件连表查询
+        已数据报表格式形式响应前台
+
+
+
+客户开发计划（开发|详情）cus_dev_plan--->cus_dev_plan_data
+    前台
+        行监听 不同行设置不同的标题
+        请求后台传id。
+        ctx+"/cus_dev_plan/toCusDevPlanPage?id="+id
+
+    后台
+        通过id查对象, 将对象设置request回显前台
+
+        查询 客户开发计划  营销计划id 查多
+        对象CusDevPlanQuery接收id
+        后台根据id查多，已数据表格形式格式返回
+
+
+cus_dev_plan_data 数据表格内部增删改查
+    前端
+        from表单绑定头监听和行监听
+        //开启头部工具栏--->toolbar: "#toolbarDemo",
+        //绑定行工具栏---> {title: '操作', templet:'#cusDevPlanListBar',fixed:"right",align:"center", minWidth:150}
+        table.on('toolbar(cusDevPlans)', function(obj){}--->开启头监听
+         table.on("tool(cusDevPlans)", function(obj){}--->开启行监听
+        监听做不同判断--->不同的前端方法操作
+        参数传递cus_dev_plan--->cus_dev_plan_data进入开发计划时 前-后-前 存隐藏id
+
+不同的前端方法操作CRUD
+cus_dev_plan_data-->add_update
+    添加计划项前端
+        前-后-前 跳转到前端不同的页面  中间传递参数
+        (sId营销机会ID)改三级标题--添加
+        监听表单
+        确认提交,处理  返回不同的提示图标
+
+    添加计划项后端
+        1.参数校验
+            营销机会ID  非空，数据存在
+            计划项内容   非空
+            计划时间    非空
+        2.设置参数的默认值
+            是否有效    默认有效
+            创建时间    系统当前时间
+            修改时间    系统当前时间
+        3.执行添加操作，判断受影响的行数
+
+    编辑计划项前端
+        前-后-前 跳转到前端不同的页面  中间传递参数(二级)
+            (sId营销机会ID)(id//编号)当id不为bull||''时改三级标题
+        监听表单(三级)
+        确认提交,处理
+        根据是否存在id,调跟新方法
+        返回不同的提示图标
+
+
+    编辑计划项后端
+        1.参数校验
+               计划项ID  非空，数据存在
+              营销机会ID  非空，数据存在
+              计划项内容   非空
+              计划时间    非空
+        2.设置参数的默认值
+            修改时间    系统当前时间
+        3.执行跟新操作，判断受影响的行数
+
+    删除计划项前端(cus_dev_plan_data)
+        行监控(layEvent === "del")
+        探测提示框,确定时发ajax请求,传单条ids
+
+
+    删除计划项后端
+        判断参数和参数查询结果是否存在
+        调sql删除
+        遍历ids集合,将对应id的is_valid设置无效
+        <foreach collection="array" item="id" open="("   separator="," close=")">
+              #{id}
+        </foreach>
+
+    营销管理开发状态
+        前台
+            (cus_dev_plan_data)头监听
+            调方法取隐藏域id和状态值
+        后台
+            判断参数 id和id取对应的用户 是否存在
+            执行sql返回结果 判断结果
+
+

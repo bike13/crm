@@ -1,0 +1,190 @@
+营销机会管理1
+    前台--数据报表自动加载
+     //开启头部工具栏
+            ,toolbar: '#toolbarDemo'
+    模糊查询--（按钮绑定） 数据表格的重载搜索
+        and s.customer_name like concat('%',#{customerName},'%')
+
+后台 --接收一个SaleChanceQuery类（三个模糊搜索）
+    多条件连表查询
+    已数据报表格式形式响应前台
+
+
+
+营销机会管理2
+     前台
+     <#--营销机会管理"sale_chance/index"-->
+        后台接收跳转页面
+     return "saleChance/sale_chance";
+    <script type="text/javascript" src="${ctx}/js/saleChance/sale.chance.js"></script>
+
+    layui数据表格
+     //开启头部工具栏
+            ,toolbar: '#toolbarDemo'
+    //绑定行工具栏
+                {title: '操作', templet:'#saleChanceListBar',fixed:"right",align:"center", minWidth:150}
+    //开发状态格式设置
+    {field: 'devResult', title: '开发状态', align:'center',templet: function (d){
+                    return formatDevResult(d.devResult);//返回状态
+                }},
+    //表格重载搜索
+        $(".search_btn").click(function (){
+            // 重载 - 这里以搜索为例
+            tableIns.reload({
+                where: { //设定异步数据接口的额外参数，任意设
+                    customerName: $("[name='customerName']").val()  // 客户名
+                    ,createMan: $("[name='createMan']").val() // 创建人
+                    ,state: $("#state").val() // 分配状态
+                }
+                ,page: {
+                    curr: 1 //重新从第 1 页开始
+                }
+            });
+        })
+
+    //指派人连表查询
+        from
+            t_sale_chance s
+        inner join
+            t_user t
+        on
+            s.assign_man = t.id
+
+
+添加营销机会
+前台
+    ftl关联js
+    <script type="text/javascript" src="${ctx}/js/saleChance/add.update.js"></script>
+    点添加弹出层请求后台  （有id修改查询做数据回显） 转前台 ftl界面
+
+    给取消绑定关闭页面
+
+    头监听提交的的form
+    ajax post请求后台进行添加
+
+
+后台
+controller
+        createMan创建人    当前登录用户名
+	//从cookie中获取userId    LoginUserUtil.releaseUserIdFromCookie(request)
+        //userService.selectByPrimaryKey     根据id 查询详情 User
+        //User.getUserName()   获取昵称      saleChance.setCreateMan(userService.selectByPrimaryKey(LoginUserUtil.releaseUserIdFromCookie(request)).getUserName());
+
+service
+    1.参数校验
+        customerName客户名称    非空
+        linkMan联系人           非空
+        linkPhone联系号码       非空，手机号码格式正确
+    2.设置相关参数的默认值
+               isValid是否有效(0=无效，1=有效)
+                设置为有效   1=有效
+             createDate创建时间
+                 默认是系统当前时间
+             updateDate跟新时间
+                 默认是系统当前时间
+
+             如果未设置指派人(默认)
+                 state分配状态(0=未分配,1=已分配)
+                     0=未分配
+                 assignTime指派时间  设置为null
+                 devResult开发状态(0=未开发，1=开发中，2=开发成功，3=开发失败)
+                     0=未开发(默认)
+             如果设置了指派人
+                 state分配状态(0=未分配,1=已分配)
+                     1 =已分配
+                 assignTine指派时间
+                     系统当前时间
+                 devResult开发状态(0=未开发，1=开发中，2=开发成功，3=开发失败)
+                     1 =开发中
+    3.执行添加操作,判断受影响的行数（自动生成）
+
+
+
+更新营销机会后端
+    1.参数校验
+        营销机会ID 非空，数据库中对应的记录存在customerName客户名称非空
+        linkMan联系人 非空
+        linkPhone联系号码 非空，手机号码格式正确
+    2.设置相关参数的默认值
+        updateDate更新时间 设置为系统当前时间
+        assignMan指派人
+            原始数据未设置
+                修改后未设置
+                    不需要操作
+                修改后已设置
+                    assignTime指派时间 设置为系统当前时间
+                    分配状态1=已分配
+                    开发状态1=开发中
+            原始数据已设置
+                修改后未设置
+                    assignTime指派时问设置为null
+                    分配状态 0=未分配
+                    开发状态 0=未开发
+                修改后已设置
+                    判断修改前后是否是同一个指派人
+                    如果是，则不需要操作
+                    如果不是，则需要更新assignTime指派时间设置为系统当前时间
+    3.执行更新操作,判断受影响的行数
+
+
+前端
+    ftl关联js
+    <script type="text/javascript" src="${ctx}/js/saleChance/sale.chance.js"></script>
+    开启行监听 对跟新删除进行判断
+    跟新取id,传添加跟新函数
+    函数根据id 判断添加id(做数据回显)  调后台函数
+    后台函数感觉id不为空查询然后做回显
+
+
+前端
+    ftl关联js update
+    <script type="text/javascript" src="${ctx}/js/saleChance/add.update.js"></script>
+    提交按钮监听
+    根据id判断调用不同函数
+
+
+
+
+对添加跟新下拉框处理
+    前端
+        在添加页面设置下拉隐藏框, 默认触发的ajax请求
+        判断查询数据 设置拼接的var语句,获取下拉框添加
+
+    后端连表查询
+        t_user, t_role  ,t_user_role
+        u.id,u.user_name as uname
+
+
+
+删除营销机会
+    前端
+    删单
+        行监控取obj.event==="del"
+        进行ajax调用后端进行删除
+    删多
+        头监控取obj.event==="del"
+        table.checkStatus("saleChanceTable");获取选中框
+        判断   多拼接删除ids
+        进行ajax调用后端进行删除
+
+    后端
+        deleteBatch sql传数组ids 将传入的id设置无效值
+        deleteSaleChance判参，判结果
+         <update id="deleteBatch" >
+            update
+                t_sale_chance
+             set
+                is_valid =0
+             where
+                id
+             in
+                <foreach collection="array" item="id" open="("   separator="," close=")">
+                     #{id}
+                </foreach>
+          </update>
+
+
+
+
+
+

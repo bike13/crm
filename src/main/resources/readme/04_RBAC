@@ -1,0 +1,349 @@
+用户模块
+	进入用户界面
+        main data-tab="user/index"请求后台 后台跳转 user/user
+
+	多条件搜索
+        前端
+            绑定js
+                <script type="text/javascript" src="${ctx}/js/user/user.js"></script>
+            js 数据表格请求后台
+            //开启头监控 toolbar: "#toolbarDemo",
+            //开启行监控{title: '操作', minWidth:150, templet:'#userListBar',fixed:"right",align:"center"}
+            搜索按钮进行多条件查询的数据表格重载
+
+        后端
+            接收userQuery对象
+            调后台sql进行遍历集合查询
+
+
+	添加|修改 用户
+        前台 user 数据表格请求后台
+        头监控obj.event=add
+        openAddOrUpdateUserDialog
+        行监控 obj.event;=edit
+        openAddOrUpdateUserDialog(obj.data.id);
+        方法内 设置标题,
+        根据是否有id调用不同后台的方法
+        接收返回ResultInfo对象
+        判断   成功刷新父页面,失败提示
+
+
+
+    后端添加
+        1.参数校验
+            用户名userName 非空，唯一性
+                名称不能为空  名称对应对象不能为空(查名称时应当is_valid=1)
+            邮箱email      非空
+            手机号phone    非空，格式正确
+        2.设置参数的默认值
+            isvalid     1
+            createDate  系统当前时间
+            updateDate   系统当前时间
+            默认密码     123456->md5加密
+        3.执行添加操作，判断受影响的行数
+        返回ResultInfo对象
+
+    后端修改
+        1.参数校验
+            用户id      非空，存在
+            要求修改后的用户名不能与自己 以外的用户名重复
+            user!=null && userName.equals(userMapper.selectByPrimaryKey(id))
+            用户名userName 非空，唯一性
+            邮箱email      非空
+            手机号phone    非空，格式正确
+        2.设置参数的默认值
+            updateDate   系统当前时间
+        3.执行修改操作，判断受影响的行数
+        返回ResultInfo对象
+
+    添加|修改 用户
+        前台 user 数据表格请求后台
+        头监控obj.event=del
+        delUser();
+
+        行监控 obj.event;=del
+        弹窗'确定删除当前数据？', {icon: 3, title: "开发计划管理"},
+        发送ajax请求ctx+"/user/delete",{ids:obj.data.id},
+        判断返回结果code==200 对应提示 关闭窗口
+
+        delUser();
+        判断选中,提示
+        弹窗 :'确定删除该选中的记录吗?',{icon:3,title:"用户管理"
+        提前数据,设置对应格式
+        发送ajax请求ctx+"/user/delete",ids= ids + saleCheckData[i].id
+        判断返回结果code==200 对应提示 关闭窗口
+
+    后端删除
+        判断参数 ids集合要有数据
+        判断结果  删除记录条数和待删记录条数一致
+        dao
+        改无效  遍历集合设置id
+
+
+用户角色关联
+    前端
+        下拉框角色信息
+            前台(自动获取)
+            1,<#--下拉框name和id-->
+            <select name="roleIds"  xm-select="selectId">
+            </select>
+            2, 绑定js
+            <script type="text/javascript" src="${ctx}/js/user/add.update.js"></script>
+            3,// 加载角色下拉框
+            formSelects.config("selectId",{
+                type: "post",
+                searchUrl: ctx+"/role/queryAllRoles",
+                keyName: 'roleName',
+                keyVal: 'id'
+            },true)
+
+        下拉框角色信息(选中状态)
+            前台
+            重add_update隐藏域中获取userId传到后台
+
+            后台
+            dao层连表查询-->(通过用户id到用户角色中间表查询角色id)-->temp表
+            -->连角色表和temp表(角色id左连接)-->连接后temp表的id存在表示选中--->设置selected:selected选中
+            SELECT
+                r1.id,
+                r1.role_name as roleName,
+            CASE
+                    WHEN IFNULL( temp.role_id, 0 ) = 0 THEN
+                    '' ELSE 'selected'
+                END AS 'selected'
+            FROM
+                t_role r1
+                LEFT JOIN ( SELECT role_id FROM t_user_role r2 WHERE r2.user_id = 10 ) temp ON r1.id = temp.role_id
+            WHERE
+                r1.is_valid =1
+
+    后端
+        添加操作
+            原始角色不存在
+                1.不添加新的角色记录
+                 .  不操作用户角色表
+                2.添加新的角色记录
+                 .  给指定用户绑定相关的角色记录
+        更新操作
+            原始角色不存在
+                1.不添加新的角色记录
+                 .  不操作用户角色表
+                2.添加新的角色记录
+                 .  给指定用户绑定相关的角色记录
+            原始角色存在
+                1.添加新的角色记录
+                   判断已有的角色记录不添加，添加没有的角色记录
+                2.清空所有的角色记录
+                   删除用户绑定角色记录
+                3.移除部分角色记录
+                   删除不存在的角色记录，存在的角色记录保留
+                4.移除部分角色，添加新的角色―删除不存在的角色记录，存在的角色记录保留，添加新的角色
+
+        如何进行角色分配???
+            原有的角色记录存在,将用户原有的角色记录删除,添加新的角色记录
+                在添加修改用户后加入用户的状态角色关联处理
+                    user取userId-->id查中间表角色状态数量>0-->调用中间表根据id删除-->将roleIds拆分组合数组--->遍历数组
+                    -->new对象设置对象的值(userId,roleId,CreateDate,UpdateDate)-->调用批量添加
+
+        删除操作
+            删除指定用户绑定的角色记录
+                在删除用户后加入 用户角色状态的关联处理
+                    遍历ids-->id查中间表角色状态数量>0-->调用中间表根据id删除
+
+
+
+
+
+
+角色授权
+    前台
+    (选择)
+    角色授权
+        通过复选框,取id,判断id只能移除修改一个
+        判断后打开toAddGrantPage(取授权页面)
+
+    //表格多选的id数据
+             openAddGrantDialog(table.checkStatus(obj.config.id).data);
+         function openAddGrantDialog(datas) {
+            if(datas.length==0){
+            }
+
+        授权页面使用ztree(加载ztree的资源路径,jquery的版本信息,内部变量的修改)
+        取查找后台显示到前台的ztree页面
+    (显示)
+    ztree自动请求后台 -->获取对应的ztree列表
+    在选中时调用方法-->前台拼接对应的roleId 和选中的mids-->请求后台
+
+    后台
+        (回显对象);不同角色 根据角色的模型 对角色资源表进行一个设置绑定
+        显示列表-->直接查询所有 有效的资源(角色权限)
+        添加权限
+            将对应的角色ID与资源ID，添加到对应的 权限表 中
+                直接添加权限:不合适，会出现重复的权限数据（执行修改权限操作后删除权限操作时)
+                推荐使用:
+                    先将已有的权限记录删除，再将需要设置的权限记录添加
+                        1.通过角色ID查询对应的权限记录
+                        2.如果权限记录存在，则删除对应的角色拥有的权限记录
+                        3.如果有权限记录，则添加权限记录
+        回显权限
+            设置回显json 的 checked: false
+            根据角色id 在权限表中查询所有 资源id返回list
+            将查询到的资源id集合与 角色权限 进行包含比较-->相同这设置回显对象的checked: true
+
+
+    ztree插件
+        https://treejs.cn/v3/main.php#_zTreeInfo
+
+
+角色权限认证
+    菜单级别(当用户不通过页面访问时有问题)
+      登录后通过userId查用户对应角色的权限设置 Session中(Permissionlist)   !!! String类型 !!!
+      连用户角色表和权限表,根据用户id查权限
+      <#if  Permissionlist?seq_contains("10")>包含显示内容</#if>
+
+
+    后端级别
+    定义注解String code() default "";
+    定义权限切面,前通知
+            //前置通知
+            //将存储的数据取出
+            List<String> Permissionlist= (List<String>) session.getAttribute("Permissionlist");
+            //判断Permissionlist中是否包含注解中的值
+            if (Permissionlist==null && Permissionlist.size()<1){
+                throw new PowerException();
+            }
+            //得到目标对象
+            MethodSignature methodSignature = (MethodSignature) pjp.getSignature();
+            //得到注解值
+            Power powercode=methodSignature.getMethod().getDeclaredAnnotation(Power.class);
+            //@com.xxxx.crm.utils.Power(code=1010)??????没有获得到对应的
+            if (!Permissionlist.contains(powercode.code())){
+                throw new PowerException();
+            }
+    全局异常捕获自定义异常处理
+
+
+菜单管理
+    进入菜单管理页面
+        主页跳转后端-->后端跳转前台-->layer-treetable
+    加载数据:前台数据表格ctx+'/module/list'-->后台查,返回json-->前台显示
+    功能实现:
+        全部展开全部折叠:头监听
+        treeTable.expandAll('#munu-table');
+        treeTable.foldAll('#munu-table');
+
+
+添加资源
+    后台
+        1.参数校验
+             层级 grade
+                 非空,0|1|2
+            模块名称moduleName
+                非空，同一层级下模块名称唯一
+            地址url
+                二级菜单(grade=1)，非空且不可重复
+            父级菜单 parentId
+                —级菜单(目录grade=O)  -1
+                二级|三级菜单(菜单|按钮 grade=1或2)    非空,父级菜单必须存在
+            权限码optValue
+                非空，不可重复
+        2.设置参数的默认值
+            是否有效isValid  1
+            创建时间createDate 系统当前时间
+            修改时间updateDate 系统当前时间
+        3.执行添加操作，判断受影响的行数
+
+    前台
+        菜单管理的 头监控 行监控(可已或获取前层级和父级id)
+        一级 二级 三级菜单 ---> 调用不同的方法(传当前层级和父级id)--->调用后端添加方法
+
+
+
+修改资源
+    后端
+        1.参数校验
+            id  非空，数据存在
+            层级grade    非空0|1|2
+            模块名称 moduleName 非空，同一层级下模块名称唯一玉不包含当前修改记录本身)
+            地址url   二级菜单(grade=1)，非空且同一层级下不可重复（不包含当前修改记录本身)
+            权限码optValue  非空，不可重复（不包含当前修改记录本身)
+        2.设置参数的默认值
+            修改时间updateDate系统当前时间
+        3.执行更新操作，判断受影响的行数
+
+        //模块名称 moduleName 非空，同一层级下模块名称唯一 且不包含当前修改记录本身)
+        AssertUtil.isTrue(StringUtils.isBlank(module.getModuleName()),"模块名称不能为空");
+        //根据名称查模块对象
+        temp=moduleMapper.queryModuleByGradeAndModuleName(grade,module.getModuleName());
+        if (temp!=null){
+            AssertUtil.isTrue(module.getId()!=temp.getId(),"该层级下模块名称已存在");
+        }
+    前端
+        行监控--->后端 id查--->前端修改页面
+        确认ajax请求,取消绑定
+
+
+删除资源
+    后端
+        1.判断删除的记录是否存在
+        2.如果当前资源存在子记录，则不可删除
+        3.删除资源时，将对应的权限表的记录也删除（判断权限表中是否存在关联数据，如果存在，则删除)
+        4.执行删除(更新)操作，判断受影响的行数
+    前端
+        行监控-->提前id-->后台删除
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+弹出框
+layer.confirm('确定删除当前菜单？', {icon: 3, title: "菜单管理"}, function (index) {
+        $.post(ctx+"/module/delete",{id:data.id},function (data) {
+            if(data.code==200){
+                layer.msg("操作成功！");
+                window.location.reload();
+            }else{
+                layer.msg(data.msg, {icon: 5});
+            }
+        });
+    })
+
+$("#closeBtn").click(function (){
+        //当你在iframe页面关闭自身时
+        var index = parent.layer.getFrameIndex(window.name); //先得到当前iframe层的索引
+        parent.layer.close(index); //再执行关闭
+    });
+
+    form.on("submit(updateModule)", function (data) {
+        console.log(data);
+        var index = top.layer.msg('数据提交中，请稍候', {icon: 16, time: false, shade: 0.8});
+
+        //弹出loading悬浮框
+        $.post(ctx+"/module/updateModule", data.field, function (res) {
+            if (res.code == 200) {
+                setTimeout(function () {
+                    top.layer.close(index);
+                    top.layer.msg("操作成功！");
+                    layer.closeAll("iframe");
+                    //刷新父页面
+                    parent.location.reload();
+                }, 500);
+            } else {
+                layer.msg(
+                    res.msg, {
+                        icon: 5
+                    }
+                );
+            }
+        });
+        return false;
+    });
